@@ -75,7 +75,7 @@ class Game
     4.times do
       @player_spelt_colors = false
       until @player_spelt_colors
-        @player_color_choice = gets.chomp.downcase
+        @player_color_choice = gets.chomp.strip.downcase
         for j in (0...colors.length) 
           if @player_color_choice == colors[j]
             player_all_guesses.push(@player_color_choice)
@@ -88,13 +88,39 @@ class Game
         end
       end
     end
+    puts "Your four color guesses are: #{player_all_guesses}"
     compare_choice()
   end
 
   def compare_choice
-    puts "Your four color guesses are: #{player_all_guesses}"
-    #resume here
+    @@matches = 0
+    @@partials = 0
+    @code_to_crack_analyse = code_to_crack
+    @player_all_guesses_analyse = player_all_guesses
+    @player_all_guesses_analyse.each_with_index do |player_color, player_color_index| 
+      @code_to_crack_analyse.each_with_index do |computer_color, computer_color_index|
+        if player_color == computer_color && player_color_index == computer_color_index
+          @@matches += 1
+          puts "match for #{player_color}"
+          @code_to_crack_analyse.delete_at(computer_color_index)
+          @player_all_guesses_analyse.delete_at(player_color_index)
+          # might need to use i and j loops instead. 
+        elsif player_color == computer_color && player_color_index != computer_color_index
+          @@partials += 1
+          # @@partials -= @@matches
+          puts "partial for #{player_color}"
+        end
+      end
+    end
+    
+    puts "Total Matches: #{@@matches}"
+    puts "Total Partials: #{@@partials}"
+    @@matches == 4 ? winner() : player_guess()
   end
+
+  def winner
+    puts "you made it!"
+  end 
 end
 
 
