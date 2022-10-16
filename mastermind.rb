@@ -3,16 +3,33 @@ module Messages
     'Enter your player name:'
   end
 
+  def new_line
+    "\n"
+  end
+
+  def creator_guessor_query
+    "Do you want to be the code creator or guessor? Type 'creator' or 'guessor' " 
+  end
+
   def greeting(player)
+    puts new_line()
     puts "Welcome #{player.name} to Mastermind!"
+  end
+
+  def color_options(colors)
+    "This is the six colors you can choose from: #{colors}"
   end
 
   def player_choose_color
     "Guess (and spell correctly) the four colors in the correct order. Type your color choice, then press enter. Repeat till four colors are selected:"
   end
 
-  def player_input_incorrect(colors)
-    "Please pick and spell correctly from the following six colors: #{colors}"
+  def player_input_incorrect(input)
+    "Please pick and spell correctly from the following: #{input}"
+  end
+
+  def end_game_message(player)
+    "Thank You #{player.name} for Playing Mastermind!"
   end
 end
 
@@ -25,50 +42,16 @@ module BoardColors
 end
 
 class Player
-  include Messages
+  include Messages, BoardColors
 
-  attr_reader :name
+  attr_reader :name, :player_all_guesses
 
-  def initialize()  #MAKE SURE THE PARENTHSESIS IS HERE. Caused a bug. 
+  def initialize()
     puts player_name()
     @name = gets.chomp.capitalize
   end
-end
 
-class Computer
-  include BoardColors, Messages
-  
-  # computer is creator
-  def computer_code
-  @computer_code = []
-    for i in (1..4)
-      j = rand(6)
-      colors = board_colors()
-      @computer_code.push(colors[j])
-    end
-    @computer_code
-  end
-end
-
-class Game
-  include Messages, BoardColors
-
-  attr_reader :code_to_crack, :player_all_guesses
-
-  def initialize()
-    @code_to_crack = Computer.new.computer_code # This is how you call something from new class into an existing class. Create an instance of it.
-  end
-  
-  def greeting(player)
-    super
-    puts "This is the six colors you can choose from: #{board_colors()}"
-    player_guess()
-  end
-
-  private
-
-  def player_guess
-    puts "This is the code to crack in player_guess #{code_to_crack}"
+  def player_guess_choices
     colors = board_colors()
     @player_all_guesses = []
     puts player_choose_color()
@@ -89,18 +72,77 @@ class Game
       end
     end
     puts "Your four color guesses are: #{player_all_guesses}"
-    feedback_variables(player_all_guesses, code_to_crack)
+    player_all_guesses
+  end
+end
+
+class Computer
+  include BoardColors, Messages
+  
+  def computer_code
+    @computer_code = []
+    for i in (1..4)
+      j = rand(6)
+      colors = board_colors()
+      @computer_code.push(colors[j])
+    end
+    @computer_code
+  end
+end
+
+class Game
+  include Messages, BoardColors
+
+  attr_reader :player, :code_to_crack
+
+  def initialize()
+    @player = Player.new
+    greeting(player)
+  end
+
+  def greeting(player)
+    super
+    creator_or_guessor()
+  end
+
+  private
+
+  def creator_or_guessor
+    puts creator_guessor_query()
+    puts new_line()
+    @game_selected = false
+    until @game_selected
+      @game_choice = gets.chomp.strip.downcase
+      if @game_choice == "guessor"
+        guessor_game_initialise()
+        @game_selected = true
+      elsif @game_choice == "creator"
+        #creator()
+        @game_selected = true
+      else puts player_input_incorrect("'creator' or 'guessor'")
+      end
+    end
+    end_of_game()
+  end
+
+  def guessor_game_initialise()
+    @code_to_crack = Computer.new.computer_code
+    @@guess_count = 0
+    puts color_options(board_colors)
+    player_guess()
+  end
+
+  def player_guess
+    puts "This is the code to crack in player_guess #{code_to_crack}" # delete line once game draft complete
+    @player_guesses = player.player_guess_choices()
+    @@guess_count += 1
+    feedback_variables(@player_guesses, code_to_crack)
   end
 
   def feedback_variables(player_code, computer_code)
-    puts "This is code to crack: #{computer_code}" # troubleshooting, will be deleted in final draft
     @@matches = 0
     @@partials = 0
     analyse_matches(player_code.dup, computer_code.dup)
-  end
-
-  def delete_match_indices(color_code, match_indices)
-    color_code.reject!.with_index {|_color, index| match_indices.include? index }
   end
 
   def analyse_matches(player_code, computer_code)
@@ -109,18 +151,15 @@ class Game
       if player_color == computer_code[player_color_index]
         @@matches += 1
         @match_color_index.push(player_color_index)
-        puts "match for #{player_color}"
-        puts "this is code to crack (matches): #{computer_code}"
-        puts "this is playercode (matches): #{player_code}"
       end
     end
-    puts @match_color_index
     delete_match_indices(player_code, @match_color_index)
     delete_match_indices(computer_code, @match_color_index)
-    #delete below puts after testing code. 
-    puts "This is player code pst matches: #{player_code}"
-    puts "This is computer code pst matches: #{computer_code}"
     analyse_partials(player_code.dup, computer_code.dup)
+  end
+
+  def delete_match_indices(color_code, match_indices)
+    color_code.reject!.with_index {|_color, index| match_indices.include? index }
   end
 
   def analyse_partials(player_code, computer_code)
@@ -128,28 +167,54 @@ class Game
       computer_code.each_with_index do |computer_color, computer_color_index|
         if player_color == computer_color && player_color_index != computer_color_index
           @@partials += 1
-          puts "partial for #{player_color}"
           computer_code.delete_at(computer_color_index)
-          puts "this is code to crack (partials]): #{computer_code}"
-          puts "this is playercode (partials): #{player_code}"
           break
         end
       end
     end
-    puts "Total Matches: #{@@matches}"
-    puts "Total Partials: #{@@partials}"
-    @@matches == 4 ? winner() : player_guess()
+    winner_check()
   end
 
-  def winner
-    puts "you made it!"
-  end 
+  def winner_check
+    puts "Total Matches: #{@@matches}"
+    puts "Total Partials: #{@@partials}"
+    puts "Number of guesses remaining: #{12 - @@guess_count}"
+    if @@guess_count < 13
+      @@matches == 4 ? winner_screen() : player_guess()
+    else lost_screen()
+    end
+    end_of_game()
+  end
+
+  def winner_screen
+    puts new_line()
+    puts "Congratulations, You win!"
+    puts new_line()
+  end
+
+  def lost_screen
+    puts "Unlucky you have lost."
+  end
+
+  def end_of_game #bug in this method with until loop asking user for answer twice. 
+    @player_selected = false
+    until @player_selected
+      puts "Would you like to play again? Type 'yes' or 'no'"
+      @answer = gets.chomp.strip.downcase
+      if @answer == "yes"
+        @player_selected = true
+        greeting(player)
+      elsif @answer == "no"
+        @player_selected = true
+        puts end_game_message(player)
+      end
+    end
+  end
 end
 
 
 def start_game
-  player = Player.new
-  game = Game.new.greeting(player)
+  Game.new
 end
 
 start_game()
