@@ -21,7 +21,7 @@ module Messages
   end
 
   def player_choose_color
-    "Guess (and spell correctly) the four colors in the correct order. Type your color choice, then press enter. Repeat till four colors are selected:"
+    "Choose your four colors in the desired order. Type your color choice, then press enter. Repeat till four colors are selected:"
   end
 
   def player_input_incorrect(input)
@@ -44,16 +44,16 @@ end
 class Player
   include Messages, BoardColors
 
-  attr_reader :name, :player_all_guesses
+  attr_reader :name, :player_color_choices
 
   def initialize()
     puts player_name()
     @name = gets.chomp.capitalize
   end
 
-  def player_guess_choices
+  def color_choices
     colors = board_colors()
-    @player_all_guesses = []
+    @player_color_choices = []
     puts player_choose_color()
     4.times do
       @player_spelt_colors = false
@@ -61,8 +61,8 @@ class Player
         @player_color_choice = gets.chomp.strip.downcase
         for j in (0...colors.length) 
           if @player_color_choice == colors[j]
-            player_all_guesses.push(@player_color_choice)
-            puts "Your guesses are: #{player_all_guesses}"
+            player_color_choices.push(@player_color_choice)
+            puts "Your color choices: #{player_color_choices}"
             @player_spelt_colors = true
             break
           end
@@ -71,8 +71,8 @@ class Player
         end
       end
     end
-    puts "Your four color guesses are: #{player_all_guesses}"
-    player_all_guesses
+    puts "Your four color choices are: #{player_color_choices}"
+    player_color_choices
   end
 end
 
@@ -117,25 +117,36 @@ class Game
         guessor_game_initialise()
         @game_selected = true
       elsif @game_choice == "creator"
-        #creator()
+        creator_game_initialise()
         @game_selected = true
       else puts player_input_incorrect("'creator' or 'guessor'")
       end
     end
-    end_of_game()
   end
 
   def guessor_game_initialise()
-    @code_to_crack = Computer.new.computer_code
-    @@guess_count = 0
+    @game_player_is_guessor = true
+    @code_to_crack = Computer.new.computer_code()
+    @@player_guess_count = 0
+    @@computer_guess_count = 0
     puts color_options(board_colors)
     player_guess()
   end
 
+  def creator_game_initialise()
+    @game_player_is_guessor = false
+    @@computer_guess_count = 0
+    @@player_guess_count = 0
+    puts color_options(board_colors)
+    @player_code = player.color_choices()
+    @computer_guess = Computer.new.computer_code()
+    feedback_variables(@player_code, @computer_guess)
+  end
+
   def player_guess
     puts "This is the code to crack in player_guess #{code_to_crack}" # delete line once game draft complete
-    @player_guesses = player.player_guess_choices()
-    @@guess_count += 1
+    @player_guesses = player.color_choices()
+    @@player_guess_count += 1
     feedback_variables(@player_guesses, code_to_crack)
   end
 
@@ -178,25 +189,35 @@ class Game
   def winner_check
     puts "Total Matches: #{@@matches}"
     puts "Total Partials: #{@@partials}"
-    puts "Number of guesses remaining: #{12 - @@guess_count}"
-    if @@guess_count < 13
+    if @@player_guess_count < 13 && @game_player_is_guessor == true
+      puts "Number of guesses remaining: #{12 - @@player_guess_count}"
       @@matches == 4 ? winner_screen() : player_guess()
+    elsif @@computer_guess_count < 13 && @game_player_is_guessor == false
+      puts "Number of guesses remaining: #{12 - @@computer_guess_count}"
+      @@matches == 4 ? winner_screen() : analyse_computer_guess()
     else lost_screen()
     end
-    end_of_game()
+  end
+
+  def analyse_computer_guess()
+    #resume here
+    #make sure user is prompted every time PC enters a guess, i.e. make code creator interactive.
+    puts "resume here"
   end
 
   def winner_screen
     puts new_line()
     puts "Congratulations, You win!"
     puts new_line()
+    end_of_game()
   end
 
   def lost_screen
     puts "Unlucky you have lost."
+    end_of_game()
   end
 
-  def end_of_game #bug in this method with until loop asking user for answer twice. 
+  def end_of_game
     @player_selected = false
     until @player_selected
       puts "Would you like to play again? Type 'yes' or 'no'"
