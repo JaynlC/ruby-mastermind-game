@@ -28,8 +28,19 @@ module Messages
     "Please pick and spell correctly from the following: #{input}"
   end
 
+  def display_player_guess(guess)
+    puts new_line()
+    "Your color guesses are: #{guess}"
+  end
+
+  def display_computer_guess(guess)
+    puts new_line()
+    "This is computer's color guesses: #{guess}"
+  end
+
   def end_game_message(player)
-    "Thank You #{player.name} for Playing Mastermind!"
+    puts new_line()
+    "Thank You #{player.name} for Playing Mastermind, hope you had fun!"
   end
 end
 
@@ -62,7 +73,7 @@ class Player
         for j in (0...colors.length) 
           if @player_color_choice == colors[j]
             player_color_choices.push(@player_color_choice)
-            puts "Your color choices: #{player_color_choices}"
+            puts display_player_guess(player_color_choices)
             @player_spelt_colors = true
             break
           end
@@ -71,7 +82,6 @@ class Player
         end
       end
     end
-    puts "Your four color choices are: #{player_color_choices}"
     player_color_choices
   end
 end
@@ -146,25 +156,20 @@ class Game
     @computer_gen_code = Computer.new.computer_code()
     @@computer_guess_count += 1
     if @@computer_guess_count > 1
+      puts display_player_guess(@player_code)
       @computer_guess = @computer_gen_code.map.with_index do |computer_color, computer_index|
-        #below is not a valid method, fix the bug. 
-        for i in (0..match_color_index.length)
-          unless computer_index == match_color_index[i]
-            computer_color
-          else 
-            match_color_list[match_color_index[i]]
-            break
-          end
+        if match_color_index.include?(computer_index)
+          match_color_list[match_color_index.find_index(computer_index)]
+        else computer_color
         end
       end
     else @computer_guess = @computer_gen_code
     end
-    puts "This is the computer's guess: #{@computer_guess}"
+    puts display_computer_guess(@computer_guess)
     feedback_variables(@player_code, @computer_guess)
   end
 
   def player_guess
-    puts "This is the code to crack in player_guess #{code_to_crack}" # delete line once game draft complete
     @player_guesses = player.color_choices()
     @@player_guess_count += 1
     feedback_variables(@player_guesses, code_to_crack)
@@ -210,26 +215,29 @@ class Game
 
   def winner_check
     puts "Total Matches: #{@@matches}"
-    puts "Total Partials: #{@@partials}"    
-    if @@player_guess_count < 13 && @game_player_is_guessor == true
-      puts "Number of guesses remaining: #{12 - @@player_guess_count}"
+    puts "Total Partials: #{@@partials}"
+    puts new_line()
+    @guess_limit = 12
+    if @@player_guess_count <= @guess_limit && @game_player_is_guessor == true
+      puts "Number of guesses remaining: #{@guess_limit - @@player_guess_count}"
       @@matches == 4 ? winner_screen() : player_guess()
-    elsif @@computer_guess_count < 13 && @game_player_is_guessor == false
-      puts "Number of guesses remaining: #{12 - @@computer_guess_count}"
+    elsif @@computer_guess_count <= @guess_limit && @game_player_is_guessor == false
+      puts "Number of guesses remaining: #{@guess_limit - @@computer_guess_count}"
       @@matches == 4 ? lost_screen() : prompt_computer_guess()
-    elsif @@player_guess_count > 12
+    elsif @@player_guess_count > @guess_limit
       lost_screen()
-    elsif @@computer_guess_count > 12
+    elsif @@computer_guess_count > @guess_limit
       winner_screen()
     end
   end
 
   def prompt_computer_guess()
     @resume_game = false
+    @prompt = "ok"
     until @resume_game
-      puts "Type 'go' to see the computer's next guess. Good luck!"
+      puts "Type #{@prompt} to see the computer's next guess. Good luck!"
       @resume_input = gets.chomp.strip.downcase
-      if @resume_input == "go"
+      if @resume_input == @prompt
         @resume_game = true
       end
     end
@@ -244,7 +252,13 @@ class Game
   end
 
   def lost_screen
+    puts new_line()
     puts "Unlucky you have lost."
+    puts new_line()
+    if @game_player_is_guessor == true
+      puts display_computer_guess(@code_to_crack)
+      puts new_line()
+    end
     end_of_game()
   end
 
@@ -263,7 +277,6 @@ class Game
     end
   end
 end
-
 
 def start_game
   Game.new
