@@ -93,7 +93,7 @@ end
 class Game
   include Messages, BoardColors
 
-  attr_reader :player, :code_to_crack
+  attr_reader :player, :code_to_crack, :match_color_list, :match_color_index
 
   def initialize()
     @player = Player.new
@@ -139,7 +139,27 @@ class Game
     @@player_guess_count = 0
     puts color_options(board_colors)
     @player_code = player.color_choices()
-    @computer_guess = Computer.new.computer_code()
+    computer_guess()
+  end
+
+  def computer_guess
+    @computer_gen_code = Computer.new.computer_code()
+    @@computer_guess_count += 1
+    if @@computer_guess_count > 1
+      @computer_guess = @computer_gen_code.map.with_index do |computer_color, computer_index|
+        #below is not a valid method, fix the bug. 
+        for i in (0..match_color_index.length)
+          unless computer_index == match_color_index[i]
+            computer_color
+          else 
+            match_color_list[match_color_index[i]]
+            break
+          end
+        end
+      end
+    else @computer_guess = @computer_gen_code
+    end
+    puts "This is the computer's guess: #{@computer_guess}"
     feedback_variables(@player_code, @computer_guess)
   end
 
@@ -153,27 +173,29 @@ class Game
   def feedback_variables(player_code, computer_code)
     @@matches = 0
     @@partials = 0
-    analyse_matches(player_code.dup, computer_code.dup)
+    prompt_matches(player_code.dup, computer_code.dup)
   end
 
-  def analyse_matches(player_code, computer_code)
+  def prompt_matches(player_code, computer_code)
     @match_color_index = []
+    @match_color_list = []
     player_code.each_with_index do |player_color, player_color_index| 
       if player_color == computer_code[player_color_index]
         @@matches += 1
-        @match_color_index.push(player_color_index)
+        match_color_index.push(player_color_index)
+        match_color_list.push(player_color)
       end
     end
-    delete_match_indices(player_code, @match_color_index)
-    delete_match_indices(computer_code, @match_color_index)
-    analyse_partials(player_code.dup, computer_code.dup)
+    delete_match_indices(player_code, match_color_index)
+    delete_match_indices(computer_code, match_color_index)
+    prompt_partials(player_code.dup, computer_code.dup)
   end
 
-  def delete_match_indices(color_code, match_indices)
-    color_code.reject!.with_index {|_color, index| match_indices.include? index }
+  def delete_match_indices(color_array, match_indices)
+    color_array.reject!.with_index {|_color, index| match_indices.include? index }
   end
 
-  def analyse_partials(player_code, computer_code)
+  def prompt_partials(player_code, computer_code)
     player_code.each_with_index do |player_color, player_color_index| 
       computer_code.each_with_index do |computer_color, computer_color_index|
         if player_color == computer_color && player_color_index != computer_color_index
@@ -188,21 +210,30 @@ class Game
 
   def winner_check
     puts "Total Matches: #{@@matches}"
-    puts "Total Partials: #{@@partials}"
+    puts "Total Partials: #{@@partials}"    
     if @@player_guess_count < 13 && @game_player_is_guessor == true
       puts "Number of guesses remaining: #{12 - @@player_guess_count}"
       @@matches == 4 ? winner_screen() : player_guess()
     elsif @@computer_guess_count < 13 && @game_player_is_guessor == false
       puts "Number of guesses remaining: #{12 - @@computer_guess_count}"
-      @@matches == 4 ? winner_screen() : analyse_computer_guess()
-    else lost_screen()
+      @@matches == 4 ? lost_screen() : prompt_computer_guess()
+    elsif @@player_guess_count > 12
+      lost_screen()
+    elsif @@computer_guess_count > 12
+      winner_screen()
     end
   end
 
-  def analyse_computer_guess()
-    #resume here
-    #make sure user is prompted every time PC enters a guess, i.e. make code creator interactive.
-    puts "resume here"
+  def prompt_computer_guess()
+    @resume_game = false
+    until @resume_game
+      puts "Type 'go' to see the computer's next guess. Good luck!"
+      @resume_input = gets.chomp.strip.downcase
+      if @resume_input == "go"
+        @resume_game = true
+      end
+    end
+    computer_guess()
   end
 
   def winner_screen
