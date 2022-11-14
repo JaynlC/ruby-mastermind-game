@@ -32,6 +32,6 @@ Fundementals Employed:
 
 What I learnt:
 ---------------------------
-- Further practise of Basic Ruby fundementals and priving further proving problem solving to create a complete Mastermind game.  
+- Further practise of Basic Ruby fundementals and proving further proving problem solving to create a complete Mastermind game.  
 - Exposure and appreciation of OOP practises.
 
